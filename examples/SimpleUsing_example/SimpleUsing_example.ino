@@ -10,7 +10,7 @@ void setup() {
 
 void loop() {
   bmp.tick();
-	static uint32_t lastMillis = millis();
+  static uint32_t lastMillis = millis();
   if (millis() - lastMillis >= 1000) {
     lastMillis = millis();
     Serial.printf("Temperature: %.3f C, Pressure: %.3f mmHg\n", bmp.getTemperature(), bmp.getMmHg());
