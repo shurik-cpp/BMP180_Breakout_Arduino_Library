@@ -36,7 +36,9 @@ char SFE_BMP180::begin()
 	
 	// Start up the Arduino's "wire" (I2C) library:
 	
-	Wire.begin();
+	if (!Wire.begin()) {
+		return 0;
+	}
 
 	// The BMP180 includes factory calibration data stored on the device.
 	// Each device has different numbers, these must be retrieved and
@@ -374,7 +376,7 @@ double SFE_BMP180::altitude(double P, double P0)
 }
 
 
-char SFE_BMP180::getError(void)
+char SFE_BMP180::getError(void) const
 	// If any library command fails, you can retrieve an extended
 	// error code using this command. Errors are from the wire library: 
 	// 0 = Success
@@ -386,3 +388,65 @@ char SFE_BMP180::getError(void)
 	return(_error);
 }
 
+//==============================================
+bool BMP180::begin() {
+	_isInitialized = _bmp.begin() > 0;
+	setOversampling(3);
+	return _isInitialized;
+}
+
+void BMP180::tick() {
+	if (!_isInitialized)
+		return;
+
+	static char bmpStatus = 0;
+	static uint32_t startWaitTime = 0;
+	switch (_bmpState) {
+		case bmpState::START_TEMPERATURE:
+			bmpStatus = _bmp.startTemperature();
+			if (bmpStatus > 0) {
+				startWaitTime = millis();
+				_bmpState = bmpState::WAIT_TEMPERATURE;
+			}
+		break;
+		case bmpState::WAIT_TEMPERATURE:
+			if (millis() - startWaitTime >= bmpStatus) {
+				_bmpState = bmpState::GET_TEMPERATURE;
+			}
+		break;
+		case bmpState::GET_TEMPERATURE:
+			bmpStatus = _bmp.getTemperature(_temperature);
+			if (bmpStatus > 0) {
+				_bmpState = bmpState::START_PRESSURE;
+			}
+			else {
+				_bmpState = bmpState::START_TEMPERATURE;
+			}
+		break;
+		case bmpState::START_PRESSURE:
+			bmpStatus = _bmp.startPressure(_oversampling);
+			if (bmpStatus > 0) {
+				startWaitTime = millis();
+				_bmpState = bmpState::WAIT_PRESSURE;
+			}
+		break;
+		case bmpState::WAIT_PRESSURE:
+			if (millis() - startWaitTime >= bmpStatus) {
+				_bmpState = bmpState::GET_PRESSURE;
+			}
+		break;
+		case bmpState::GET_PRESSURE:
+			bmpStatus = _bmp.getPressure(_millibar, _temperature);
+			_bmpState = bmpState::START_TEMPERATURE;
+		break;
+	}
+
+	if (bmpStatus == 0) {
+		_bmpState = bmpState::START_TEMPERATURE;
+	}
+}
+
+void BMP180::setOversampling(const char value) {
+	_oversampling = value;
+	_bmpState = bmpState::START_TEMPERATURE;
+}

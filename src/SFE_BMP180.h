@@ -67,7 +67,7 @@ class SFE_BMP180
 			// P0: fixed baseline pressure (mbar)
 			// returns signed altitude in meters
 
-		char getError(void);
+		char getError(void) const;
 			// If any library command fails, you can retrieve an extended
 			// error code using this command. Errors are from the wire library: 
 			// 0 = Success
@@ -118,5 +118,42 @@ class SFE_BMP180
 #define	BMP180_COMMAND_PRESSURE1 0x74
 #define	BMP180_COMMAND_PRESSURE2 0xB4
 #define	BMP180_COMMAND_PRESSURE3 0xF4
+
+class BMP180 {
+private:
+	SFE_BMP180 _bmp;
+	bool _isInitialized = false;
+	double _temperature = 0;
+	double _millibar = 0;
+	char _oversampling = 0;
+
+	enum class bmpState {
+		START_TEMPERATURE = 0, 
+		WAIT_TEMPERATURE,
+		GET_TEMPERATURE, 
+		START_PRESSURE, 
+		WAIT_PRESSURE,
+		GET_PRESSURE
+	};
+	bmpState _bmpState = bmpState::START_TEMPERATURE;
+
+public:
+	BMP180() = default;
+	~BMP180() = default;
+
+	bool begin();
+	/**
+	 * To get the current temperature and pressure, it is necessary to call BMP::tick() in loop() 
+	 * as often as possible so that the sensor polling state machine works as quickly as possible.
+	*/
+	bool isInitialized() const { return _isInitialized; }
+	void tick();
+	void setOversampling(const char value);
+	char getOversampling() const { return _oversampling; }
+	double getTemperature() const { return _temperature; }
+	double getMillibar() const { return _millibar; }
+	double getMmHg() const { return _millibar * 0.7500637554192; }
+	char getError() const { return _bmp.getError(); }
+};
 
 #endif
