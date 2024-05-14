@@ -139,7 +139,7 @@ private:
 
 public:
 	BMP180() = default;
-	~BMP180() = default;
+	virtual ~BMP180() = default;
 
 	bool begin();
 	/**
